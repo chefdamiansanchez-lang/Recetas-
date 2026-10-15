@@ -1,0 +1,43 @@
+name: Compilar Recetas Verdes
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Descomprimir proyecto
+        run: |
+          ZIP=$(ls RecetasVerdes*.zip | head -n 1)
+          echo "Usando $ZIP"
+          mkdir -p _src
+          unzip -q -o "$ZIP" -d _src
+          SETTINGS=$(find _src -name settings.gradle | head -n 1)
+          echo "PROJ=$(dirname "$SETTINGS")" >> "$GITHUB_ENV"
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Instalar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.7'
+
+      - name: Compilar APK
+        working-directory: ${{ env.PROJ }}
+        run: gradle assembleDebug --no-daemon --stacktrace
+
+      - name: Subir APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: RecetasVerdes-APK
+          path: ${{ env.PROJ }}/app/build/outputs/apk/debug/*.apk
